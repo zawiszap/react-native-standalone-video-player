@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   NativeEventEmitter,
   NativeModules,
@@ -99,11 +99,11 @@ function getVideoProgress(playerInstance = 0): Promise<number> {
 function useVideoPlayer(playerInstance = 0) {
   const play = useCallback(() => {
     PlayerVideoManager.play(playerInstance);
-  }, []);
+  }, [playerInstance]);
 
   const pause = useCallback(() => {
     PlayerVideoManager.pause(playerInstance);
-  }, []);
+  }, [playerInstance]);
 
   const stop = useCallback(() => {
     // emit here for faster loop (dont wait from native)
@@ -115,7 +115,7 @@ function useVideoPlayer(playerInstance = 0) {
     CurrentVideoId[playerInstance] = null;
 
     PlayerVideoManager.stop(playerInstance);
-  }, []);
+  }, [playerInstance]);
 
   const load = useCallback(
     (
@@ -151,31 +151,48 @@ function useVideoPlayer(playerInstance = 0) {
 
       PlayerVideoManager.load(playerInstance, url, isHls, loop);
     },
-    []
+    [playerInstance]
   );
 
-  const seek = useCallback((pos: number) => {
-    PlayerVideoManager.seek(playerInstance, pos);
-  }, []);
+  const seek = useCallback(
+    (pos: number) => {
+      PlayerVideoManager.seek(playerInstance, pos);
+    },
+    [playerInstance]
+  );
 
-  const seekForward = useCallback((time: number) => {
-    PlayerVideoManager.seekForward(playerInstance, time);
-  }, []);
+  const seekForward = useCallback(
+    (time: number) => {
+      PlayerVideoManager.seekForward(playerInstance, time);
+    },
+    [playerInstance]
+  );
 
-  const seekRewind = useCallback((time: number) => {
-    PlayerVideoManager.seekRewind(playerInstance, time);
-  }, []);
+  const seekRewind = useCallback(
+    (time: number) => {
+      PlayerVideoManager.seekRewind(playerInstance, time);
+    },
+    [playerInstance]
+  );
 
-  return {
-    play,
-    pause,
-    stop,
-    load,
-    seek,
-    seekForward,
-    seekRewind,
-    videoId: CurrentVideoId[playerInstance], // not the best way to return global var here...
-  };
+  const getCurrentVideoId = useCallback(() => {
+    // not the best way to return global var here...
+    return CurrentVideoId[playerInstance];
+  }, [playerInstance]);
+
+  return useMemo(
+    () => ({
+      play,
+      pause,
+      stop,
+      load,
+      seek,
+      seekForward,
+      seekRewind,
+      getCurrentVideoId,
+    }),
+    [getCurrentVideoId, load, pause, play, seek, seekForward, seekRewind, stop]
+  );
 }
 
 //
@@ -185,62 +202,37 @@ function useVideoPlayer(playerInstance = 0) {
 const eventEmitter = new NativeEventEmitter(StandaloneVideoPlayer);
 
 const PlayerInfo = {
-  lastStatus: PlayerStatus.none,
+  // for each player instance
+  // TODO: make it dynamic for more players...
+  lastStatus: [
+    PlayerStatus.none,
+    PlayerStatus.none,
+    PlayerStatus.none,
+    PlayerStatus.none,
+    PlayerStatus.none,
+  ],
 };
 
-function usePlayerVideoStatus(playerInstance = 0) {
+function usePlayerVideoStatus(playerInstance = 0, recordingId?: string) {
   // get current status
-  const [status, setStatus] = useState(PlayerInfo.lastStatus);
+  const [status, setStatus] = useState(PlayerInfo.lastStatus[playerInstance]);
 
   useEffect(() => {
     const subscription = eventEmitter.addListener(
       'PlayerStatusChanged',
       (data) => {
         if (data.instance === playerInstance) {
-          PlayerInfo.lastStatus = createStatus(data.status);
+          if (!recordingId || recordingId === CurrentVideoId[playerInstance]) {
+            PlayerInfo.lastStatus[playerInstance] = createStatus(data.status);
 
-          setStatus(createStatus(data.status));
+            setStatus(createStatus(data.status));
+          }
         }
       }
     );
 
-    return () => subscription.remove();
-  }, [playerInstance]);
-
-  return {
-    status,
-  };
-}
-
-//
-
-// it updates only for current recording
-function useRecordingPlayerVideoStatus(
-  recordingId: string,
-  playerInstance: number = 0
-) {
-  // get current status
-  const [status, setStatus] = useState(PlayerInfo.lastStatus);
-
-  useEffect(() => {
-    const subscription = eventEmitter.addListener(
-      'PlayerStatusChanged',
-      (data) => {
-        if (
-          data.instance === playerInstance &&
-          recordingId === CurrentVideoId[playerInstance]
-        ) {
-          PlayerInfo.lastStatus = createStatus(data.status);
-
-          setStatus(createStatus(data.status));
-        }
-      }
-    );
-
-    return () => subscription.remove();
-  }, [recordingId]);
-
-  //
+    return subscription.remove;
+  }, [playerInstance, recordingId]);
 
   const forceLoadingStatus = () => {
     setStatus(PlayerStatus.loading);
@@ -356,6 +348,5 @@ export {
   getVideoDuration,
   useVideoPlayer,
   usePlayerVideoStatus,
-  useRecordingPlayerVideoStatus,
   usePlayerVideoProgress,
 };
