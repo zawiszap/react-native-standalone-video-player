@@ -348,5 +348,6 @@ export {
   getVideoDuration,
   useVideoPlayer,
   usePlayerVideoStatus,
+  useRecordingPlayerVideoStatus,
   usePlayerVideoProgress,
 };
