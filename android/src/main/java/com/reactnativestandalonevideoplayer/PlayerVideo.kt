@@ -60,10 +60,6 @@ class PlayerVideo(val context: Context) {
     get() = status == PlayerVideoStatus.loading
     set(value) {}
 
-  var volume: Float
-    get() = player.volume
-    set(value) { player.volume = value }
-
   var duration: Double
     get() {
       if (player.duration == C.TIME_UNSET) {

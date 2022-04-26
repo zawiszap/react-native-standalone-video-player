@@ -64,7 +64,7 @@ class StandaloneVideoPlayer(val context: ReactApplicationContext): ReactContextB
   }
 
   @ReactMethod
-  fun load(instance: Int, url: String, isHls: Boolean, loop: Boolean, isSilent: Boolean) {
+  fun load(instance: Int, url: String, isHls: Boolean, loop: Boolean) {
     if (instance < 0 || instance >= PlayerVideo.instances.size) {
       return
     }
@@ -99,10 +99,6 @@ class StandaloneVideoPlayer(val context: ReactApplicationContext): ReactContextB
       }
 
       PlayerVideo.instances[instance].loadVideo(url, isHls, loop)
-
-      if (isSilent) {
-        PlayerVideo.instances[instance].volume = 0f
-      }
     }
 
 
@@ -185,19 +181,6 @@ class StandaloneVideoPlayer(val context: ReactApplicationContext): ReactContextB
       Log.d("PlayerVideo", "SEEK FORWARD by = ${time}")
 
       PlayerVideo.instances[instance].seekRewind(time)
-    }
-  }
-
-  @ReactMethod
-  fun setVolume(instance: Int, volume: Float) {
-    if (instance < 0 || instance >= PlayerVideo.instances.size) {
-      return
-    }
-
-    Handler(context.mainLooper).post {
-      Log.d("PlayerVideo", "setVolume = ${volume}")
-
-      PlayerVideo.instances[instance].volume = volume
     }
   }
 
