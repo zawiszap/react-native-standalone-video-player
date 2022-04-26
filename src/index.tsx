@@ -205,7 +205,7 @@ const PlayerInfo = {
   lastStatus: PlayerStatus.none,
 };
 
-function usePlayerVideoStatus(playerInstance = 0, recordingId?: string) {
+function usePlayerVideoStatus(playerInstance = 0) {
   // get current status
   const [status, setStatus] = useState(PlayerInfo.lastStatus);
 
@@ -214,17 +214,15 @@ function usePlayerVideoStatus(playerInstance = 0, recordingId?: string) {
       'PlayerStatusChanged',
       (data) => {
         if (data.instance === playerInstance) {
-          if (!recordingId || recordingId === CurrentVideoId[playerInstance]) {
-            PlayerInfo.lastStatus = createStatus(data.status);
+          PlayerInfo.lastStatus = createStatus(data.status);
 
-            setStatus(createStatus(data.status));
-          }
+          setStatus(createStatus(data.status));
         }
       }
     );
 
-    return subscription.remove;
-  }, [playerInstance, recordingId]);
+    return () => subscription.remove();
+  }, [playerInstance]);
 
   return {
     status,
